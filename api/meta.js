@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     // 2. Insights diários da campanha
     const insightsUrl = new URL(`https://graph.facebook.com/v19.0/${campaign.id}/insights`);
-    insightsUrl.searchParams.set('fields', 'date_start,spend,impressions,clicks,actions,cpm,ctr,cpc');
+    insightsUrl.searchParams.set('fields', 'date_start,spend,impressions,inline_link_clicks,actions,cpm');
     insightsUrl.searchParams.set('time_range', JSON.stringify({ since: sinceDate, until: untilDate }));
     insightsUrl.searchParams.set('time_increment', '1');
     insightsUrl.searchParams.set('access_token', TOKEN);
@@ -59,9 +59,9 @@ export default async function handler(req, res) {
     const insightsData = await insightsRes.json();
     if (insightsData.error) return res.status(400).json({ error: insightsData.error.message });
 
-    // 3. Insights por anúncio (level=ad) — inclui instagram_permalink via ad criativo
+    // 3. Insights por anúncio (level=ad)
     const adInsightsUrl = new URL(`https://graph.facebook.com/v19.0/${campaign.id}/insights`);
-    adInsightsUrl.searchParams.set('fields', 'ad_name,ad_id,spend,impressions,clicks,actions,cpm,ctr,cpc');
+    adInsightsUrl.searchParams.set('fields', 'ad_name,ad_id,spend,impressions,inline_link_clicks,actions,cpm');
     adInsightsUrl.searchParams.set('time_range', JSON.stringify({ since: sinceDate, until: untilDate }));
     adInsightsUrl.searchParams.set('level', 'ad');
     adInsightsUrl.searchParams.set('access_token', TOKEN);
@@ -104,18 +104,23 @@ export default async function handler(req, res) {
       return found ? parseFloat(found.value) : 0;
     };
 
-    // 6. Normalizar diário
-    const diario = (insightsData.data || []).map(r => ({
-      data: r.date_start,
-      investimento: parseFloat(r.spend || 0),
-      impressoes: parseInt(r.impressions || 0),
-      cliques: parseInt(r.clicks || 0),
-      lp_views: getAction(r.actions, 'landing_page_view'),
-      checkouts: getAction(r.actions, 'initiate_checkout'),
-      cpm: parseFloat(r.cpm || 0),
-      ctr: parseFloat(r.ctr || 0),
-      cpc: parseFloat(r.cpc || 0),
-    }));
+    // 6. Normalizar diário — CTR e CPC calculados manualmente
+    const diario = (insightsData.data || []).map(r => {
+      const inv = parseFloat(r.spend || 0);
+      const imp = parseInt(r.impressions || 0);
+      const clk = parseInt(r.inline_link_clicks || 0);
+      return {
+        data: r.date_start,
+        investimento: inv,
+        impressoes: imp,
+        cliques: clk,
+        lp_views: getAction(r.actions, 'landing_page_view'),
+        checkouts: getAction(r.actions, 'initiate_checkout'),
+        cpm: parseFloat(r.cpm || 0),
+        ctr: imp > 0 ? (clk / imp) * 100 : 0,
+        cpc: clk > 0 ? inv / clk : 0,
+      };
+    });
 
     // 7. Agregar por nome do anúncio (mesmo anúncio pode rodar em múltiplos adsets)
     // Usa ad_name como chave — soma tráfego de todos os adsets do mesmo criativo
@@ -136,7 +141,7 @@ export default async function handler(req, res) {
       }
       const inv = parseFloat(r.spend || 0);
       const imp = parseInt(r.impressions || 0);
-      const clk = parseInt(r.clicks || 0);
+      const clk = parseInt(r.inline_link_clicks || 0);
       adMap[name].investimento += inv;
       adMap[name].impressoes += imp;
       adMap[name].cliques += clk;
@@ -167,12 +172,4 @@ export default async function handler(req, res) {
       produto,
       campanha: campaign.name,
       campanha_id: campaign.id,
-      periodo: { since: sinceDate, until: untilDate },
-      diario,
-      por_anuncio,
-    });
-
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-}
+      periodo: { since: sinceDate, un
