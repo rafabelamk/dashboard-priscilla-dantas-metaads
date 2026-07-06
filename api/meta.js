@@ -117,7 +117,8 @@ export default async function handler(req, res) {
       cpc: parseFloat(r.cpc || 0),
     }));
 
-    // 7. Agregar por anúncio (soma do período)
+    // 7. Agregar por nome do anúncio (mesmo anúncio pode rodar em múltiplos adsets)
+    // Usa ad_name como chave — soma tráfego de todos os adsets do mesmo criativo
     const adMap = {};
     (adInsightsData.data || []).forEach(r => {
       const name = r.ad_name;
@@ -130,16 +131,23 @@ export default async function handler(req, res) {
           instagram_permalink: permalinkMap[id] || '',
           investimento: 0, impressoes: 0, cliques: 0,
           lp_views: 0, checkouts: 0,
-          ctr_sum: 0, ctr_count: 0,
+          ctr_imp: 0, ctr_clk: 0, // para calcular CTR ponderado por impressões
         };
       }
-      adMap[name].investimento += parseFloat(r.spend || 0);
-      adMap[name].impressoes += parseInt(r.impressions || 0);
-      adMap[name].cliques += parseInt(r.clicks || 0);
+      const inv = parseFloat(r.spend || 0);
+      const imp = parseInt(r.impressions || 0);
+      const clk = parseInt(r.clicks || 0);
+      adMap[name].investimento += inv;
+      adMap[name].impressoes += imp;
+      adMap[name].cliques += clk;
       adMap[name].lp_views += getAction(r.actions, 'landing_page_view');
       adMap[name].checkouts += getAction(r.actions, 'initiate_checkout');
-      const ctr = parseFloat(r.ctr || 0);
-      if (ctr > 0) { adMap[name].ctr_sum += ctr; adMap[name].ctr_count++; }
+      adMap[name].ctr_imp += imp;
+      adMap[name].ctr_clk += clk;
+      // Atualiza permalink se ainda não tiver
+      if (!adMap[name].instagram_permalink && permalinkMap[id]) {
+        adMap[name].instagram_permalink = permalinkMap[id];
+      }
     });
 
     const por_anuncio = Object.values(adMap).map(a => ({
@@ -151,7 +159,8 @@ export default async function handler(req, res) {
       cliques: a.cliques,
       lp_views: a.lp_views,
       checkouts: a.checkouts,
-      ctr: a.ctr_count > 0 ? a.ctr_sum / a.ctr_count : 0,
+      // CTR calculado diretamente: cliques totais / impressões totais
+      ctr: a.ctr_imp > 0 ? (a.ctr_clk / a.ctr_imp) * 100 : 0,
     })).sort((a, b) => b.investimento - a.investimento);
 
     return res.status(200).json({
