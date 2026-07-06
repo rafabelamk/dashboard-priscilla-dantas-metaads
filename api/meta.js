@@ -172,4 +172,12 @@ export default async function handler(req, res) {
       produto,
       campanha: campaign.name,
       campanha_id: campaign.id,
-      periodo: { since: sinceDate, un
+      periodo: { since: sinceDate, until: untilDate },
+      diario,
+      por_anuncio,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
