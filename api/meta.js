@@ -49,52 +49,57 @@ export default async function handler(req, res) {
 
     // 2. Insights diários da campanha
     const insightsUrl = new URL(`https://graph.facebook.com/v19.0/${campaign.id}/insights`);
-    insightsUrl.searchParams.set('fields', 'date_start,spend,impressions,inline_link_clicks,actions,cpm');
+    insightsUrl.searchParams.set('fields', 'date_start,spend,impressions,inline_link_clicks,cpm,actions');
     insightsUrl.searchParams.set('time_range', JSON.stringify({ since: sinceDate, until: untilDate }));
     insightsUrl.searchParams.set('time_increment', '1');
     insightsUrl.searchParams.set('access_token', TOKEN);
-    insightsUrl.searchParams.set('limit', '100');
+    insightsUrl.searchParams.set('limit', '500');
 
     const insightsRes = await fetch(insightsUrl.toString());
-    const insightsData = await insightsRes.json();
-    if (insightsData.error) return res.status(400).json({ error: insightsData.error.message });
+    const insightsText = await insightsRes.text();
+    let insightsData;
+    try { insightsData = JSON.parse(insightsText); } catch(e) { return res.status(500).json({ error: 'Parse error diario', raw: insightsText.slice(0,500) }); }
+    if (insightsData.error) return res.status(400).json({ error: insightsData.error.message, code: insightsData.error.code, details: insightsData.error });
 
     // 3. Insights por anúncio (level=ad)
     const adInsightsUrl = new URL(`https://graph.facebook.com/v19.0/${campaign.id}/insights`);
-    adInsightsUrl.searchParams.set('fields', 'ad_name,ad_id,spend,impressions,inline_link_clicks,actions,cpm');
+    adInsightsUrl.searchParams.set('fields', 'ad_name,ad_id,spend,impressions,inline_link_clicks,cpm,actions');
     adInsightsUrl.searchParams.set('time_range', JSON.stringify({ since: sinceDate, until: untilDate }));
     adInsightsUrl.searchParams.set('level', 'ad');
     adInsightsUrl.searchParams.set('access_token', TOKEN);
     adInsightsUrl.searchParams.set('limit', '200');
 
     const adInsightsRes = await fetch(adInsightsUrl.toString());
-    const adInsightsData = await adInsightsRes.json();
-    if (adInsightsData.error) return res.status(400).json({ error: adInsightsData.error.message });
+    const adInsightsText = await adInsightsRes.text();
+    let adInsightsData;
+    try { adInsightsData = JSON.parse(adInsightsText); } catch(e) { return res.status(500).json({ error: 'Parse error ads', raw: adInsightsText.slice(0,500) }); }
+    if (adInsightsData.error) return res.status(400).json({ error: adInsightsData.error.message, code: adInsightsData.error.code, details: adInsightsData.error });
 
-    // 4. Buscar instagram_permalink dos anúncios
+    // 4. Buscar instagram_permalink dos anúncios (em paralelo com timeout)
     const adIds = [...new Set((adInsightsData.data || []).map(a => a.ad_id).filter(Boolean))];
     const permalinkMap = {};
 
     if (adIds.length > 0) {
-      // Busca em lotes de 50
       const chunks = [];
       for (let i = 0; i < adIds.length; i += 50) chunks.push(adIds.slice(i, i + 50));
 
-      for (const chunk of chunks) {
-        const batchUrl = new URL('https://graph.facebook.com/v19.0/');
-        batchUrl.searchParams.set('ids', chunk.join(','));
-        batchUrl.searchParams.set('fields', 'id,name,creative{instagram_permalink_url}');
-        batchUrl.searchParams.set('access_token', TOKEN);
+      const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+
+      await Promise.allSettled(chunks.map(async chunk => {
         try {
-          const batchRes = await fetch(batchUrl.toString());
+          const batchUrl = new URL('https://graph.facebook.com/v19.0/');
+          batchUrl.searchParams.set('ids', chunk.join(','));
+          batchUrl.searchParams.set('fields', 'id,creative{instagram_permalink_url}');
+          batchUrl.searchParams.set('access_token', TOKEN);
+          const batchRes = await Promise.race([fetch(batchUrl.toString()), timeout(5000)]);
           const batchData = await batchRes.json();
           Object.entries(batchData).forEach(([id, ad]) => {
             if (ad?.creative?.instagram_permalink_url) {
               permalinkMap[id] = ad.creative.instagram_permalink_url;
             }
           });
-        } catch (e) { /* ignora erros de permalink */ }
-      }
+        } catch (e) { /* ignora erros/timeout de permalink */ }
+      }));
     }
 
     // 5. Processar ação por tipo
