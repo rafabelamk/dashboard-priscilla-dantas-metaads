@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Priscilla Dantas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+<meta name="description" content="Painel de resultados Meta Ads — KD26 e PPRR26">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:#0f172a;font-family:'Inter',sans-serif;color:#f1f5f9}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#1e293b}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.wrap{max-width:1400px;margin:0 auto;padding:32px 16px}
+@media(min-width:768px){.wrap{padding:40px 28px}}
+.header{text-align:center;margin-bottom:28px}
+.header-inner{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:10px}
+.header-photo{width:72px;height:72px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #334155;flex-shrink:0}
+.header-text h1{font-size:clamp(22px,4vw,34px);font-weight:800;letter-spacing:-.02em;color:#f1f5f9;text-align:left}
+.grad-line{width:96px;height:2px;background:linear-gradient(90deg,#3b82f6,#10b981);margin:10px auto 8px}
+.header p{color:#64748b;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.tabs{display:flex;justify-content:center;margin-bottom:20px}
+.tab-wrap{display:flex;gap:4px;padding:4px;border-radius:12px;background:#1e293b;border:1px solid #334155}
+.tab-btn{padding:8px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.tab-btn.on{background:#2563eb;color:#fff}
+.tab-btn.off{background:transparent;color:#94a3b8}
+.tab-btn.off:hover{color:#e2e8f0}
+.subtitle{text-align:center;color:#94a3b8;font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
+.period-wrap{display:flex;justify-content:center;margin-bottom:28px;flex-direction:column;align-items:center;gap:8px}
+.period-btns{display:flex;gap:6px;overflow-x:auto;max-width:100%;padding-bottom:2px}
+.period-btns::-webkit-scrollbar{display:none}
+.pbtn{padding:6px 12px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #475569;background:#1e293b;color:#94a3b8;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit}
+.pbtn.on{background:#2563eb;color:#fff;border-color:#2563eb}
+.pbtn:hover:not(.on){color:#e2e8f0;border-color:#64748b}
+.custom-dates{display:none;gap:8px;align-items:center}
+.custom-dates.show{display:flex}
+.custom-dates input{background:#1e293b;border:1px solid #475569;border-radius:6px;color:#f1f5f9;padding:5px 10px;font-size:13px;font-family:inherit}
+.custom-dates span{color:#64748b}
+.grid5{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+@media(min-width:640px){.grid5{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1024px){.grid5{grid-template-columns:repeat(5,1fr)}}
+.grid7{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:24px}
+@media(min-width:640px){.grid7{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1024px){.grid7{grid-template-columns:repeat(7,1fr)}}
+.kpi{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi-highlight{background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.35);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi-label{color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-value{font-size:20px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-sub{color:#64748b;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blue{color:#60a5fa}.green{color:#34d399}.amber{color:#fbbf24}.red{color:#f87171}.slate{color:#cbd5e1}.purple{color:#c084fc}.muted{color:#94a3b8}.section{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:24px}
+.section-title{color:#cbd5e1;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+.section-sub{color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.chart-wrap{position:relative;width:100%;height:300px}
+.chart-wrap-sm{position:relative;width:100%;height:260px}
+.tscroll{overflow-x:auto;overflow-y:auto;max-height:420px;border-radius:12px;border:1px solid #334155}
+table{width:100%;font-size:13px;border-collapse:collapse}
+thead tr{border-bottom:1px solid #334155;position:sticky;top:0;z-index:10;background:#1e293b}
+th{padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(51,65,85,.5);transition:background .12s}
+tbody tr:hover{background:rgba(51,65,85,.3)}
+td{padding:10px 16px;white-space:nowrap}
+.td-name{max-width:200px;overflow:hidden;text-overflow:ellipsis;color:#e2e8f0}
+.td-utm{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;color:#94a3b8;font-size:12px}
+.ig-link{color:#60a5fa;text-decoration:none}
+.ig-link:hover{color:#93c5fd}
+.badge-v0{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,.12);color:#34d399;white-space:nowrap}
+.badge-v02{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(168,85,247,.15);color:#c084fc;white-space:nowrap}
+.cpa-alert{color:#f87171;font-weight:700;position:relative}
+.cpa-alert::after{content:'⚠';font-size:11px;margin-left:4px;opacity:.85}
+.empty{text-align:center;color:#475569;padding:24px;font-size:13px}
+.error-box{background:#450a0a;border:1px solid #dc2626;border-radius:12px;padding:14px 18px;margin-bottom:24px;color:#fca5a5;font-size:13px;display:none}
+.note{font-size:12px;color:#64748b;margin-bottom:12px;margin-top:-8px}
+footer{text-align:center;color:#334155;font-size:11px;padding:12px 0 32px}
+.loading-overlay{text-align:center;color:#475569;padding:48px;font-size:13px}
+.sync-row{display:flex;align-items:center;gap:10px;margin-top:4px}
+.sync-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #3b82f6;background:rgba(59,130,246,.1);color:#60a5fa;font-family:inherit;transition:all .15s}
+.sync-btn:hover:not(:disabled){background:rgba(59,130,246,.2)}
+.sync-btn:disabled{opacity:.5;cursor:not-allowed}
+.sync-icon{display:inline-block;transition:transform .6s}
+.sync-icon.spinning{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sync-status{font-size:12px;color:#64748b}
+.sync-status.ok{color:#34d399}
+.sync-status.err{color:#f87171}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+<div class="header-inner">
+<img src="image.png" alt="Priscilla Dantas" class="header-photo">
+<div class="header-text">
+<h1>PRISCILLA DANTAS</h1>
+</div>
+</div>
+<div class="grad-line"></div>
+<p>Meta Ads Performance Dashboard</p>
+</div>
+
+<div class="tabs">
+<div class="tab-wrap">
+<button class="tab-btn on" data-prod="KD26">KD26</button>
+<button class="tab-btn off" data-prod="PPRR26">PPRR26</button>
+</div>
+</div>
+
+<div class="subtitle" id="subtitle">KD26 — Kit de Documento — Vendas Gerais</div>
+
+<div class="period-wrap">
+<div class="period-btns">
+<button class="pbtn" data-p="today">Hoje</button>
+<button class="pbtn" data-p="yesterday">Ontem</button>
+<button class="pbtn" data-p="3">Últimos 3 dias</button>
+<button class="pbtn" data-p="7">Últimos 7 dias</button>
+<button class="pbtn" data-p="14">Últimos 14 dias</button>
+<button class="pbtn on" data-p="30">Últimos 30 dias</button>
+<button class="pbtn" data-p="total">Período Total</button>
+<button class="pbtn" data-p="custom">Personalizar</button>
+</div>
+<div class="custom-dates" id="customDates">
+<input type="date" id="dateFrom">
+<span>→</span>
+<input type="date" id="dateTo">
+</div>
+<div class="sync-row">
+<button class="sync-btn" id="syncBtn" onclick="syncMeta()">
+<span class="sync-icon" id="syncIcon">↻</span> Sync Meta
+</button>
+<span class="sync-status" id="syncStatus">—</span>
+</div>
+</div>
+
+<div class="error-box" id="errorBox"></div>
+
+<div class="grid5" id="kpiMain">
+<div class="loading-overlay" style="grid-column:1/-1">Carregando dados...</div>
+</div>
+
+<div class="section">
+<div class="section-title">Investimento × Vendas × CAC por dia</div>
+<div class="chart-wrap"><canvas id="chartMain"></canvas></div>
+</div>
+
+<div class="section">
+<div class="section-title">Resultados Diários</div>
+<div class="tscroll"><table><thead><tr id="thDaily"></tr></thead><tbody id="tbDaily"><tr><td class="empty">Carregando...</td></tr></tbody></table></div>
+</div>
+
+<div class="section">
+<div class="section-title">Performance por Anúncio</div>
+<p class="note" id="adsNote" style="display:none">⚡ Agrupado por anúncio + página — teste A/B entre <strong>PAG V0 (curta)</strong> e <strong>PAG V0-2 (longa)</strong></p>
+<div class="tscroll"><table><thead><tr id="thAds"></tr></thead><tbody id="tbAds"><tr><td class="empty">Carregando...</td></tr></tbody></table></div>
+</div>
+
+<div class="section">
+<div class="section-title">Métricas de Tráfego</div>
+<div class="grid7" id="kpiTraffic"></div>
+<div class="section-sub">CPM / CTR / CPC por dia</div>
+<div class="chart-wrap-sm"><canvas id="chartTraffic"></canvas></div>
+</div>
+
+<footer>Meta Ads API + Kiwify · Dashboard Priscilla Dantas</footer>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const PRODS={
+  KD26:{label:'KD26',name:'KD26 — Kit de Documento',price:47,kGid:'591361303'},
+  PPRR26:{label:'PPRR26',name:'PPRR26 — Primeiros Passos da Regularização Rural',price:297,kGid:'1958580679'}
+};
+const SHEET_ID='1XN7oDDT48A39_CpeY1Lr8V-zcN4KmYO01YQNK0DC7gQ';
+const SHEET_BASE=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=`;
+const CONSOLIDADO_URL=SHEET_BASE+'710709317';
+const TOOS_BASE='https://docs.google.com/spreadsheets/d/1toosBhz-oiZhy3sZ9bpI9edPisq8XRkYnhaUBurRKBE/export?format=csv&gid=';
+const OB_SHEET_URL=TOOS_BASE+'704030411';      // KD26 + OB
+const PPRR26_SHEET_URL=TOOS_BASE+'2135483138'; // PPRR26 — GID CORRETO
+// Planilha com Ad Name (col D) × Instagram Permalink URL (col R)
+const PERMALINK_URL=SHEET_BASE+'384375254';
+const PRECO_OB=29;
+
+let curProd='KD26',curPeriod='30';
+let rawMeta={KD26:null,PPRR26:null};
+let rawKiwify={KD26:null,PPRR26:null};
+let rawKD26All=[];
+let rawPPRR26All=[];
+let rawConsolidado=[];
+let rawOB=[];
+let permalinkMap={};  // ad_name → instagram permalink URL
+let chartMain=null,chartTraf=null;
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const parseBR=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(',','.'))||0};
+const parseDt=s=>{
+  if(!s)return null;
+  const str=String(s).trim();
+  if(str.includes('/')){
+    const parts=str.split('/');
+    const d=+parts[0],m=+parts[1];let y=+parts[2];
+    if(y<100)y+=2000;
+    return new Date(y,m-1,d);
+  }
+  if(str.includes('-')){const[y,m,d]=str.split('-');return new Date(+y,+m-1,+d);}
+  return null;
+};
+const fBRL=v=>(isNaN(v)||!isFinite(v))?'—':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fPct=v=>(isNaN(v)||!isFinite(v))?'—':v.toFixed(1).replace('.',',')+'%';
+const fROAS=v=>(isNaN(v)||!isFinite(v))?'—':v.toFixed(2).replace('.',',')+' x';
+const fInt=v=>isNaN(v)?'—':Math.round(v).toLocaleString('pt-BR');
+const fDDMM=s=>{const d=parseDt(s);return d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'):s||''};
+const safe=(n,d)=>(!d||d===0||!isFinite(n/d))?0:n/d;
+const rCls=r=>!r||isNaN(r)?'muted':r>=2?'green':r>=1?'amber':'red';
+const td=(v,c='')=>`<td class="${c}">${v}</td>`;
+const th=l=>`<th>${l}</th>`;
+
+// ─── HELPER: normaliza nome de coluna ─────────────────────────────────────────
+// Busca uma chave no objeto ignorando maiúsculas/minúsculas
+function col(row, ...names) {
+  for(const n of names){
+    if(row[n]!==undefined && row[n]!==null) return String(row[n]).trim();
+    // busca case-insensitive
+    const lower = n.toLowerCase();
+    for(const k of Object.keys(row)){
+      if(k.toLowerCase()===lower && row[k]!==undefined && row[k]!==null)
+        return String(row[k]).trim();
+    }
+  }
+  return '';
+}
+
+// ─── FILTRO DE PERÍODO ────────────────────────────────────────────────────────
+function getDateRange(){
+  const today=new Date();today.setHours(0,0,0,0);
+  if(curPeriod==='today')return{from:today,to:today};
+  if(curPeriod==='yesterday'){const y=new Date(today);y.setDate(y.getDate()-1);return{from:y,to:y};}
+  if(curPeriod==='total')return{from:new Date(2026,5,30),to:today};
+  if(curPeriod==='custom'){
+    const f=document.getElementById('dateFrom').value,t=document.getElementById('dateTo').value;
+    if(!f||!t)return{from:new Date(0),to:new Date(9999,0,1)};
+    return{from:new Date(f+'T00:00:00'),to:new Date(t+'T00:00:00')};
+  }
+  const days=parseInt(curPeriod);
+  const to=new Date(today);to.setDate(to.getDate()-1);
+  const from=new Date(today);from.setDate(from.getDate()-days);
+  return{from,to};
+}
+
+function filterKiwify(rows){
+  const{from,to}=getDateRange();
+  return rows.filter(r=>{
+    const raw=col(r,'data corrigida','data');
+    const d=parseDt(raw);if(!d)return false;d.setHours(0,0,0,0);
+    return d>=from&&d<=to;
+  });
+}
+
+function filterMetaDaily(daily){
+  const{from,to}=getDateRange();
+  return daily.filter(r=>{
+    const d=parseDt(r.data);if(!d)return false;d.setHours(0,0,0,0);
+    return d>=from&&d<=to;
+  });
+}
+
+function filterConsolidado(){
+  const{from,to}=getDateRange();
+  return rawConsolidado.filter(r=>{
+    const raw=col(r,'Data','data');
+    const d=parseDt(raw);if(!d)return false;d.setHours(0,0,0,0);
+    return d>=from&&d<=to;
+  });
+}
+
+// ─── BUILD CONS ───────────────────────────────────────────────────────────────
+function buildCons(metaData,prod,filteredKiwify){
+  const isKD26=prod.label==='KD26';
+  const MIN_DATE_KD26=new Date(2026,6,2);
+  const daily=metaData.diario||[];
+
+  let inv=0,imp=0,clk=0,lpv=0,chk=0;
+  daily.forEach(r=>{
+    const d=parseDt(r.data);
+    const afterMin=!isKD26||(d&&d>=MIN_DATE_KD26);
+    inv+=r.investimento||0;
+    imp+=r.impressoes||0;
+    clk+=r.cliques||0;
+    lpv+=r.lp_views||0;
+    chk+=afterMin?(r.checkouts||0):0;
+  });
+
+  let vnd=0,fat=0,vendasOB=0,fatOB=0;
+  if(isKD26){
+    vnd=filteredKiwify.length;
+    fat=vnd*prod.price;
+    if(rawConsolidado.length){
+      filterConsolidado().forEach(r=>{
+        vendasOB+=parseBR(col(r,'Venda OB GPPRROB','venda ob gpprrob'));
+        fatOB+=parseBR(col(r,'Faturamento OB GPPRROB','faturamento ob gpprrob'));
+      });
+    }
+  } else {
+    vnd=filteredKiwify.length;
+    fat=vnd*prod.price;
+  }
+
+  const MIN_DATE_OB=new Date(2026,6,7);
+  const fatTotal=fat+fatOB;
+  const cac=safe(inv,vnd);
+  const roas=safe(fatTotal,inv);
+
+  const vndChk=isKD26&&rawConsolidado.length
+    ?rawConsolidado.filter(r=>{
+        const d=parseDt(col(r,'Data','data'));
+        return d&&d>=MIN_DATE_KD26;
+      }).reduce((s,r)=>s+parseBR(col(r,'Venda KD26','venda kd26')),0)
+    :vnd;
+
+  const vndParaOB=isKD26
+    ?filterKiwify(rawKD26All).filter(r=>{
+        const raw=col(r,'data corrigida','data');
+        const d=parseDt(raw);if(!d)return false;d.setHours(0,0,0,0);
+        return d>=MIN_DATE_OB;
+      }).length
+    :0;
+
+  return{
+    inv,imp,clk,lpv,chk,vnd,fat,vendasOB,fatOB,fatTotal,vndParaOB,
+    cpm:safe(inv,imp)*1000,ctr:safe(clk,imp)*100,cpc:safe(inv,clk),
+    connect:safe(lpv,clk)*100,lp2chk:safe(chk,lpv)*100,
+    chk2vnd:safe(vndChk,chk)*100,convPg:safe(vndChk,lpv)*100,
+    cac,roas,daily
+  };
+}
+
+function filterOB(){
+  const{from,to}=getDateRange();
+  return rawOB.filter(r=>{
+    const raw=col(r,'data corrigida','data');
+    const d=parseDt(raw);if(!d)return false;d.setHours(0,0,0,0);
+    return d>=from&&d<=to;
+  });
+}
+
+// ─── BUILD ADS ────────────────────────────────────────────────────────────────
+function buildAdsKiwify(kiwifyRows,metaData,isPPRR){
+  const adsPorAnuncio=metaData.por_anuncio||[];
+  const isKD26=!isPPRR;
+
+  // Debug: loga primeiras linhas do PPRR26 para checar colunas
+  if(isPPRR && kiwifyRows.length>0){
+    console.log('[PPRR26] Exemplo de linha da planilha:', kiwifyRows[0]);
+    console.log('[PPRR26] Colunas disponíveis:', Object.keys(kiwifyRows[0]));
+  }
+
+  // 1. Vendas por anúncio (Kiwify / planilha)
+  const salesMap={};
+  kiwifyRows.forEach(r=>{
+    // Tenta ler 'content' (utm_content = nome do anúncio)
+    const name=col(r,'content','utm_content','Content');
+    const medium=col(r,'medium','utm_medium','Medium');
+
+    if(!name)return;
+
+    let page=null;
+    if(isPPRR){
+      if(medium.includes('PAG V0-2'))page='PAG V0-2 (longa)';
+      else if(medium.includes('PAG V0'))page='PAG V0 (curta)';
+    }
+
+    const key=isPPRR?name+'||'+(page||'sem-pagina'):name;
+    if(!salesMap[key])salesMap[key]={name,page,medium,vnd:0};
+    salesMap[key].vnd+=1;
+    // Atualiza medium com o último valor não-vazio
+    if(medium && !salesMap[key].medium) salesMap[key].medium=medium;
+  });
+
+  // 2. OB por anúncio (só KD26)
+  const obMap={};
+  if(isKD26){
+    filterOB().forEach(r=>{
+      const name=col(r,'content','utm_content','Content').trim();
+      if(!name)return;
+      if(!obMap[name])obMap[name]={vendas_ob:0,fat_ob:0};
+      obMap[name].vendas_ob+=1;
+      obMap[name].fat_ob+=PRECO_OB;
+    });
+  }
+
+  // 3. Tráfego Meta por anúncio
+  const metaMap={};
+  adsPorAnuncio.forEach(a=>{
+    // Link: prioridade → planilha de permalinks → API do Meta
+    const linkFromSheet=permalinkMap[a.ad_name]||'';
+    const linkFromApi=a.instagram_permalink||'';
+    metaMap[a.ad_name]={
+      link:linkFromSheet||linkFromApi,
+      inv:a.investimento||0,
+      imp:a.impressoes||0,
+      clk:a.cliques||0,
+      ctr:a.ctr||0,
+    };
+  });
+
+  // 3b. Garante que anúncios que só estão na planilha de permalinks
+  // mas não na API também apareçam com link preenchido
+  // (já coberto no passo 4 via allNames, o link virá do permalinkMap abaixo)
+
+  // 4. União de todos os nomes
+  const allNames=[...new Set([
+    ...Object.values(salesMap).map(s=>s.name),
+    ...adsPorAnuncio.map(a=>a.ad_name),
+  ])];
+
+  return allNames.map(name=>{
+    // Para PPRR, pode haver múltiplas entradas (uma por página)
+    let totalVnd=0, pages=[], mediums=new Set();
+    if(isPPRR){
+      Object.entries(salesMap).forEach(([key,s])=>{
+        if(s.name===name){
+          totalVnd+=s.vnd;
+          if(s.page)pages.push(s.page);
+          if(s.medium)mediums.add(s.medium);
+        }
+      });
+    } else {
+      const s=salesMap[name]||{};
+      totalVnd=s.vnd||0;
+      if(s.medium)mediums.add(s.medium);
+    }
+
+    const meta=metaMap[name]||{link:'',inv:0,imp:0,clk:0,ctr:0};
+    const ob=obMap[name]||{vendas_ob:0,fat_ob:0};
+    const inv=meta.inv;
+    const cpa=totalVnd>0&&inv>0?inv/totalVnd:null;
+
+    // Para PPRR, mostra a(s) página(s) detectadas
+    const pageLabel=pages.length>0?[...new Set(pages)].join(' + '):null;
+    const decodeSafe=s=>{try{return decodeURIComponent(s);}catch{return s;}};
+    // Decodifica URL-encoding e remove sufixo duplicado (parte após a vírgula que repete o mesmo texto)
+    const cleanMedium=s=>{
+      const decoded=decodeSafe(s);
+      // Se contiver vírgula, pega só a primeira parte (remove o duplicado URL-encoded)
+      const parts=decoded.split(',');
+      return parts[0].trim();
+    };
+    const mediumCleaned=[...new Set([...mediums].map(cleanMedium))];
+    const mediumLabel=mediumCleaned[0]||'';
+
+    // Link: API do Meta já incluiu o da planilha; para nomes só na Kiwify, tenta planilha diretamente
+    const link=meta.link||permalinkMap[name]||'';
+
+    return{
+      name,
+      page:pageLabel,
+      medium:mediumLabel,
+      link,inv,imp:meta.imp,clk:meta.clk,ctrAvg:meta.ctr,
+      vnd:totalVnd,cpa,
+      vendas_ob:ob.vendas_ob||0,fat_ob:ob.fat_ob||0,
+    };
+  }).sort((a,b)=>b.inv-a.inv);
+}
+
+// ─── RENDER KPIs ─────────────────────────────────────────────────────────────
+function renderKPIs(m,prod){
+  const isKD26=prod.label==='KD26';
+  const rc=rCls(m.roas);
+  const vendasTotal=m.vnd+(m.vendasOB||0);
+  const txOB=safe(m.vendasOB,m.vndParaOB)*100;
+
+  const kpisBase=[
+    {l:'Investimento',v:fBRL(m.inv),c:'blue',s:''},
+    {l:'Vendas '+prod.label,v:fInt(m.vnd),c:'green',s:''},
+    ...(isKD26?[{l:'Vendas OB GPPRROB',v:fInt(m.vendasOB),c:'purple',s:'Order Bump · desde 02/07'}]:[]),
+    ...(isKD26?[{l:'TX OB',v:fPct(txOB),c:'purple',s:'OB / Vendas KD26'}]:[]),
+    ...(isKD26?[{l:'Vendas Totais',v:fInt(vendasTotal),c:'green',s:'KD26 + OB',highlight:true}]:[]),
+    {l:isKD26?'CAC KD26':'CAC',v:fBRL(m.cac),c:'amber',s:'Custo por venda'},
+    ...(isKD26?[{l:'CAC Geral',v:fBRL(safe(m.inv,vendasTotal)),c:'amber',s:'Investimento / KD26 + OB'}]:[]),
+    {l:'ROAS',v:fROAS(m.roas),c:rc,s:'Fat. Total / Investimento'},
+    {l:'Fat. '+prod.label,v:fBRL(m.fat),c:'green',s:''},
+    ...(isKD26?[{l:'Fat. OB GPPRROB',v:fBRL(m.fatOB),c:'purple',s:'R$ 29/unid'}]:[]),
+    ...(isKD26?[{l:'Faturamento Total',v:fBRL(m.fatTotal),c:'green',s:'KD26 + OB',highlight:true}]:[]),
+  ];
+
+  document.getElementById('kpiMain').innerHTML=kpisBase.map(k=>`
+    <div class="kpi${k.highlight?' kpi-highlight':''}">
+      <span class="kpi-label">${k.l}</span>
+      <span class="kpi-value ${k.c}">${k.v}</span>
+      ${k.s?`<span class="kpi-sub">${k.s}</span>`:''}
+    </div>`).join('');
+
+  document.getElementById('kpiTraffic').innerHTML=[
+    {l:'CPM',v:fBRL(m.cpm),c:'blue',s:'por mil impressões'},
+    {l:'CTR',v:fPct(m.ctr),c:'slate',s:'Cliques / Impressões'},
+    {l:'CPC',v:fBRL(m.cpc),c:'amber',s:'Custo por clique'},
+    {l:'Connect Rate',v:fPct(m.connect),c:'green',s:'LP View / Cliques'},
+    {l:'LP → Checkout',v:fPct(m.lp2chk),c:'green',s:'Checkout / LP View'},
+    {l:'Chk → Venda',v:fPct(m.chk2vnd),c:'green',s:'Vendas / Checkouts'},
+    {l:'Conv. Pg Vendas',v:fPct(m.convPg),c:'green',s:'Vendas / LP Views'},
+  ].map(k=>`<div class="kpi"><span class="kpi-label">${k.l}</span><span class="kpi-value ${k.c}">${k.v}</span>${k.s?`<span class="kpi-sub">${k.s}</span>`:''}</div>`).join('');
+}
+
+// ─── RENDER DAILY ─────────────────────────────────────────────────────────────
+function renderDaily(m,prod,kiwifyRows){
+  const isKD26=prod.label==='KD26';
+  const MIN_KD26=new Date(2026,6,2);
+
+  const kiwifyByDate={};
+  kiwifyRows.forEach(r=>{
+    const raw=col(r,'data corrigida','data');
+    const d=parseDt(raw);if(!d)return;
+    const key=`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    kiwifyByDate[key]=(kiwifyByDate[key]||0)+1;
+  });
+
+  const cols=['Data','Investimento','Impressões','Cliques','LP Views','Checkouts','Vendas','Faturamento','CAC','ROAS','Connect','LP→Chk','Chk→Vnd','Pg→Vnd'];
+  document.getElementById('thDaily').innerHTML=cols.map(th).join('');
+
+  const rows=[...m.daily].reverse();
+  if(!rows.length){document.getElementById('tbDaily').innerHTML=`<tr><td colspan="14" class="empty">Sem dados para o período.</td></tr>`;return;}
+
+  document.getElementById('tbDaily').innerHTML=rows.map(r=>{
+    const data=r.data||'';
+    const dataFmt=fDDMM(data);
+    const inv=r.investimento||0;
+    const imp=r.impressoes||0;
+    const clk=r.cliques||0;
+    const lpv=r.lp_views||0;
+    const chk=r.checkouts||0;
+    const dRow=parseDt(data);
+    const afterMin=!isKD26||(dRow&&dRow>=MIN_KD26);
+    const dataKey=dRow?`${String(dRow.getDate()).padStart(2,'0')}/${String(dRow.getMonth()+1).padStart(2,'0')}/${dRow.getFullYear()}`:'';
+    const vnd=kiwifyByDate[dataKey]||0;
+    const fat=vnd*prod.price;
+    const cac=safe(inv,vnd);
+    const roas=safe(fat,inv);
+    const chkShow=afterMin?fInt(chk):'—';
+    const l2cShow=afterMin&&lpv>0?fPct(safe(chk,lpv)*100):'—';
+    const c2vShow=afterMin&&chk>0?fPct(safe(vnd,chk)*100):'—';
+    return`<tr>${td(dataFmt,'slate')}${td(fBRL(inv),'blue')}${td(fInt(imp),'muted')}${td(fInt(clk),'muted')}${td(fInt(lpv),'muted')}${td(chkShow,'muted')}${td(fInt(vnd),'green')}${td(fBRL(fat),'green')}${td(vnd>0?fBRL(cac):'—','amber')}${td(inv>0?fROAS(roas):'—',rCls(roas))}${td(clk>0?fPct(safe(lpv,clk)*100):'—','muted')}${td(l2cShow,'muted')}${td(c2vShow,'muted')}${td(lpv>0?fPct(safe(vnd,lpv)*100):'—','muted')}</tr>`;
+  }).join('');
+}
+
+// ─── RENDER ADS ───────────────────────────────────────────────────────────────
+function renderAds(ads,isPPRR,prod){
+  const isKD26=!isPPRR;
+  const priceLimit=prod.price; // KD26=47, PPRR26=297
+  document.getElementById('adsNote').style.display=isPPRR?'block':'none';
+
+  const headers=[
+    'Nome do Anúncio',
+    ...(isPPRR?['Página']:[]),
+    'Link','UTM Medium [Público]',
+    'Investimento','Impressões','Link Clicks','CTR','CPC',
+    'Vendas','CPA',
+    ...(isKD26?['Vendas OB','Fat. OB']:[]),
+  ];
+  document.getElementById('thAds').innerHTML=headers.map(th).join('');
+
+  const cols=headers.length;
+  if(!ads.length){document.getElementById('tbAds').innerHTML=`<tr><td colspan="${cols}" class="empty">Sem dados de anúncios para o período.</td></tr>`;return;}
+
+  const igIcon=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>`;
+
+  document.getElementById('tbAds').innerHTML=ads.map(a=>{
+    const badge=a.page
+      ?`<span class="${a.page.includes('V0-2')?'badge-v02':'badge-v0'}">${a.page}</span>`
+      :`<span class="muted">—</span>`;
+    const link=a.link
+      ?`<a href="${a.link}" target="_blank" rel="noopener noreferrer" class="ig-link">${igIcon}</a>`
+      :`<span class="muted">—</span>`;
+    const medium=a.medium
+      ?`<span class="td-utm" title="${a.medium}">${a.medium}</span>`
+      :`<span class="muted">—</span>`;
+    const cpc=a.clk>0?a.inv/a.clk:0;
+    const cpaOver=a.cpa&&a.cpa>priceLimit;
+    const cpaCell=a.cpa
+      ?`<td><span class="${cpaOver?'cpa-alert':'amber'}" title="${cpaOver?'CPA acima do preço do produto (R$ '+priceLimit.toFixed(2).replace('.',',')+')':''}">${fBRL(a.cpa)}</span></td>`
+      :`<td><span class="muted">—</span></td>`;
+    const obCols=isKD26
+      ?`${td(a.vendas_ob>0?fInt(a.vendas_ob):'—','purple')}${td(a.fat_ob>0?fBRL(a.fat_ob):'—','purple')}`
+      :'';
+    return`<tr><td class="td-name" title="${a.name}">${a.name}</td>${isPPRR?`<td>${badge}</td>`:''}<td>${link}</td><td>${medium}</td>${td(fBRL(a.inv),'blue')}${td(fInt(a.imp),'muted')}${td(fInt(a.clk),'muted')}${td(a.ctrAvg>0?fPct(a.ctrAvg):'—','muted')}${td(a.clk>0?fBRL(cpc):'—','amber')}${td(fInt(a.vnd),'green')}${cpaCell}${obCols}</tr>`;
+  }).join('');
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────────────────────
+const CDEFS={gridColor:'rgba(51,65,85,.6)',tickColor:'#94a3b8',ttBg:'#1e293b',ttBorder:'#334155'};
+
+function renderChartMain(m,prod,kiwifyRows){
+  const daily=[...m.daily].reverse();
+  const kiwifyByDate={};
+  kiwifyRows.forEach(r=>{
+    const raw=col(r,'data corrigida','data');
+    const d=parseDt(raw);if(!d)return;
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    kiwifyByDate[key]=(kiwifyByDate[key]||0)+1;
+  });
+  const labels=daily.map(r=>fDDMM(r.data));
+  const invD=daily.map(r=>r.investimento||0);
+  const vndD=daily.map(r=>kiwifyByDate[r.data]||0);
+  const cacD=daily.map(r=>{
+    const i=r.investimento||0;
+    const v=kiwifyByDate[r.data]||0;
+    return v>0?+(i/v).toFixed(2):0;
+  });
+  if(chartMain)chartMain.destroy();
+  chartMain=new Chart(document.getElementById('chartMain').getContext('2d'),{
+    data:{labels,datasets:[
+      {type:'bar',label:'Investimento',data:invD,backgroundColor:'rgba(59,130,246,.8)',borderRadius:3,yAxisID:'y'},
+      {type:'line',label:'Vendas',data:vndD,borderColor:'#10b981',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#10b981',tension:.3,yAxisID:'y2'},
+      {type:'line',label:'CAC (R$)',data:cacD,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:2,borderDash:[4,2],pointRadius:3,pointBackgroundColor:'#f59e0b',tension:.3,yAxisID:'y3'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:CDEFS.tickColor,font:{size:12},boxWidth:12}},
+        tooltip:{backgroundColor:CDEFS.ttBg,borderColor:CDEFS.ttBorder,borderWidth:1,titleColor:'#94a3b8',bodyColor:'#f1f5f9',
+          callbacks:{label:c=>{const v=c.parsed.y;return c.dataset.label==='Vendas'?' Vendas: '+Math.round(v):' '+c.dataset.label+': R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}}}},
+      scales:{
+        x:{ticks:{color:CDEFS.tickColor,font:{size:11}},grid:{color:CDEFS.gridColor}},
+        y:{ticks:{color:CDEFS.tickColor,font:{size:11},callback:v=>'R$'+(v>=1000?Math.round(v/1000)+'k':v)},grid:{color:CDEFS.gridColor}},
+        y2:{position:'right',ticks:{color:'#10b981',font:{size:11}},grid:{display:false}},
+        y3:{position:'right',ticks:{color:'#f59e0b',font:{size:11},callback:v=>'R$'+v},grid:{display:false},display:false},
+      }}
+  });
+}
+
+function renderChartTraffic(m){
+  const daily=[...m.daily].reverse();
+  const labels=daily.map(r=>fDDMM(r.data));
+  const cpmD=daily.map(r=>{const i=r.investimento||0,p=r.impressoes||0;return p>0?+(i/p*1000).toFixed(2):0;});
+  const cpcD=daily.map(r=>{const i=r.investimento||0,c=r.cliques||0;return c>0?+(i/c).toFixed(2):0;});
+  const ctrD=daily.map(r=>{const c=r.cliques||0,p=r.impressoes||0;return p>0?+(c/p*100).toFixed(2):0;});
+  if(chartTraf)chartTraf.destroy();
+  chartTraf=new Chart(document.getElementById('chartTraffic').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'CPM',data:cpmD,borderColor:'#3b82f6',backgroundColor:'transparent',borderWidth:2,pointRadius:2,pointBackgroundColor:'#fff',tension:.3,yAxisID:'y'},
+      {label:'CPC',data:cpcD,borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:2,pointRadius:2,pointBackgroundColor:'#fff',tension:.3,yAxisID:'y'},
+      {label:'CTR %',data:ctrD,borderColor:'#a855f7',backgroundColor:'transparent',borderWidth:2,pointRadius:2,pointBackgroundColor:'#fff',tension:.3,yAxisID:'y2'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:CDEFS.tickColor,font:{size:12},boxWidth:12}},
+        tooltip:{backgroundColor:CDEFS.ttBg,borderColor:CDEFS.ttBorder,borderWidth:1,titleColor:'#94a3b8',bodyColor:'#f1f5f9',
+          callbacks:{label:c=>c.dataset.label==='CTR %'?' CTR: '+c.parsed.y.toFixed(2)+'%':' '+c.dataset.label+': R$ '+c.parsed.y.toFixed(2)}}},
+      scales:{
+        x:{ticks:{color:CDEFS.tickColor,font:{size:11}},grid:{color:CDEFS.gridColor}},
+        y:{ticks:{color:CDEFS.tickColor,font:{size:11},callback:v=>'R$'+v},grid:{color:CDEFS.gridColor}},
+        y2:{position:'right',ticks:{color:'#a855f7',font:{size:11},callback:v=>v+'%'},grid:{display:false}},
+      }}
+  });
+}
+
+// ─── RENDER PRINCIPAL ─────────────────────────────────────────────────────────
+function render(){
+  const prod=PRODS[curProd],isPPRR=curProd==='PPRR26';
+  const isKD26=!isPPRR;
+  document.getElementById('subtitle').textContent=prod.name+' — Vendas Gerais';
+
+  const metaData=rawMeta[curProd];
+  const allKiwify=isKD26?rawKD26All:rawPPRR26All;
+  const filteredKiwify=filterKiwify(allKiwify);
+
+  if(!metaData){
+    document.getElementById('kpiMain').innerHTML='<div class="loading-overlay" style="grid-column:1/-1">Carregando dados do Meta Ads...</div>';
+    return;
+  }
+
+  const m=buildCons(metaData,prod,filteredKiwify);
+  renderKPIs(m,prod);
+  renderDaily(m,prod,filteredKiwify);
+  renderChartMain(m,prod,filteredKiwify);
+  renderChartTraffic(m);
+  renderAds(buildAdsKiwify(filteredKiwify,metaData,isPPRR),isPPRR,prod);
+}
+
+// ─── CARREGAMENTO DE DADOS ────────────────────────────────────────────────────
+function fetchKiwifyCSV(gid){
+  return new Promise((res,rej)=>{
+    Papa.parse(SHEET_BASE+gid,{download:true,header:true,skipEmptyLines:true,
+      complete:r=>res(r.data),error:e=>rej(e)});
+  });
+}
+
+function fetchKiwifyCSV_url(url){
+  return new Promise((res,rej)=>{
+    Papa.parse(url,{download:true,header:true,skipEmptyLines:true,
+      complete:r=>res(r.data),error:e=>rej(e)});
+  });
+}
+
+function getPeriodDates(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const fmt=d=>d.toISOString().split('T')[0];
+  if(curPeriod==='today')return{since:fmt(today),until:fmt(today)};
+  if(curPeriod==='yesterday'){
+    const y=new Date(today);y.setDate(y.getDate()-1);
+    return{since:fmt(y),until:fmt(y)};
+  }
+  if(curPeriod==='total')return{since:'2026-06-30',until:fmt(today)};
+  if(curPeriod==='custom'){
+    const f=document.getElementById('dateFrom').value;
+    const t=document.getElementById('dateTo').value;
+    if(f&&t)return{since:f,until:t};
+    return{since:fmt(new Date(today-30*24*60*60*1000)),until:fmt(today)};
+  }
+  const days=parseInt(curPeriod);
+  const until=new Date(today);until.setDate(until.getDate()-1);
+  const since=new Date(today);since.setDate(since.getDate()-days);
+  return{since:fmt(since),until:fmt(until)};
+}
+
+async function fetchMetaAPI(produto,since,until){
+  const res=await fetch(`/api/meta?produto=${produto}&since=${since}&until=${until}`);
+  if(!res.ok)throw new Error(`Meta API ${res.status}`);
+  return res.json();
+}
+
+function setSyncStatus(state,msg){
+  const el=document.getElementById('syncStatus');
+  const icon=document.getElementById('syncIcon');
+  const btn=document.getElementById('syncBtn');
+  if(state==='loading'){
+    icon.classList.add('spinning');btn.disabled=true;
+    el.textContent='Sincronizando...';el.className='sync-status';
+  } else if(state==='ok'){
+    icon.classList.remove('spinning');btn.disabled=false;
+    el.textContent='✓ Atualizado às '+msg;el.className='sync-status ok';
+  } else if(state==='err'){
+    icon.classList.remove('spinning');btn.disabled=false;
+    el.textContent='✗ Erro ao sincronizar';el.className='sync-status err';
+  } else {
+    icon.classList.remove('spinning');btn.disabled=false;
+    el.textContent=msg||'—';el.className='sync-status';
+  }
+}
+
+function getNow(){
+  return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function syncMeta(){
+  setSyncStatus('loading');
+  try{
+    const{since,until}=getPeriodDates();
+    const[metaKD,metaPP]=await Promise.all([
+      fetchMetaAPI('KD26',since,until),
+      fetchMetaAPI('PPRR26',since,until),
+    ]);
+    rawMeta.KD26=metaKD;rawMeta.PPRR26=metaPP;
+    render();setSyncStatus('ok',getNow());
+  }catch(e){setSyncStatus('err');console.error(e);}
+}
+
+function setLoading(){
+  document.getElementById('kpiMain').innerHTML='<div class="loading-overlay" style="grid-column:1/-1">Carregando...</div>';
+  document.getElementById('tbDaily').innerHTML='<tr><td class="empty">Carregando...</td></tr>';
+  document.getElementById('tbAds').innerHTML='<tr><td class="empty">Carregando...</td></tr>';
+  document.getElementById('kpiTraffic').innerHTML='';
+}
+
+async function loadAll(){
+  setLoading();setSyncStatus('loading');
+  try{
+    const{since,until}=getPeriodDates();
+    const[metaKD,metaPP,kiwifyKD,kiwifyPP,consolidadoRows,obRows,pprr26Rows,permalinkRows]=await Promise.all([
+      fetchMetaAPI('KD26',since,until),
+      fetchMetaAPI('PPRR26',since,until),
+      fetchKiwifyCSV(PRODS.KD26.kGid),
+      fetchKiwifyCSV(PRODS.PPRR26.kGid),
+      fetchKiwifyCSV_url(CONSOLIDADO_URL),
+      fetchKiwifyCSV_url(OB_SHEET_URL),
+      fetchKiwifyCSV_url(PPRR26_SHEET_URL),
+      fetchKiwifyCSV_url(PERMALINK_URL),
+    ]);
+    rawMeta.KD26=metaKD;rawMeta.PPRR26=metaPP;
+    rawKiwify.KD26=kiwifyKD;rawKiwify.PPRR26=kiwifyPP;
+
+    const isPPRR26Row=r=>(col(r,'campaign')||'').includes('[PPRR26]');
+    rawKD26All=obRows.filter(r=>col(r,'data corrigida','data')&&!isPPRR26Row(r));
+    rawOB=obRows.filter(r=>(col(r,'orderbump','OrderBump')||'').toUpperCase()==='TRUE'&&!isPPRR26Row(r));
+
+    // PPRR26: vem do GID 2135483138 — filtra linhas com data
+    rawPPRR26All=pprr26Rows.filter(r=>col(r,'data corrigida','data'));
+
+    rawConsolidado=consolidadoRows.filter(r=>col(r,'Data','data'));
+
+    // Monta mapa ad_name → permalink a partir da planilha GID 384375254
+    // Col D = Ad Name, Col R = Instagram Permalink URL
+    permalinkMap={};
+    permalinkRows.forEach(r=>{
+      // PapaParse usa header da linha 1; as colunas D e R têm nomes vindos do cabeçalho
+      // Busca por nome da coluna de forma flexível
+      const adName=col(r,'Ad Name','ad name','Ad name','AdName','ad_name','Adset Name');
+      const url=col(r,'Instagram Permalink URL','instagram permalink url','Instagram permalink url','instagram_permalink_url','Permalink URL','permalink url');
+      if(adName && url) permalinkMap[adName.trim()]=url.trim();
+    });
+    console.log('[permalinkMap] Carregado:', Object.keys(permalinkMap).length, 'entradas');
+    if(permalinkRows.length>0) console.log('[permalinkMap] Colunas disponíveis:', Object.keys(permalinkRows[0]||{}));
+    render();setSyncStatus('ok',getNow());
+  }catch(e){
+    const eb=document.getElementById('errorBox');eb.style.display='block';
+    eb.textContent='Erro ao carregar dados: '+e.message;
+    setSyncStatus('err');console.error(e);
+  }
+}
+
+async function reloadMeta(){
+  setLoading();setSyncStatus('loading');
+  try{
+    const{since,until}=getPeriodDates();
+    const[metaKD,metaPP]=await Promise.all([
+      fetchMetaAPI('KD26',since,until),
+      fetchMetaAPI('PPRR26',since,until),
+    ]);
+    rawMeta.KD26=metaKD;rawMeta.PPRR26=metaPP;
+    render();setSyncStatus('ok',getNow());
+  }catch(e){
+    const eb=document.getElementById('errorBox');eb.style.display='block';
+    eb.textContent='Erro ao carregar dados: '+e.message;
+    setSyncStatus('err');console.error(e);
+  }
+}
+
+// ─── EVENTOS ──────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+  curProd=b.dataset.prod;
+  document.querySelectorAll('.tab-btn').forEach(x=>{x.classList.toggle('on',x===b);x.classList.toggle('off',x!==b);});
+  render();
+}));
+
+document.querySelectorAll('.pbtn').forEach(b=>b.addEventListener('click',()=>{
+  curPeriod=b.dataset.p;
+  document.querySelectorAll('.pbtn').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('customDates').classList.toggle('show',curPeriod==='custom');
+  if(curPeriod!=='custom')reloadMeta();
+}));
+
+document.getElementById('dateFrom').addEventListener('change',()=>{
+  if(curPeriod==='custom'&&document.getElementById('dateTo').value)reloadMeta();
+});
+document.getElementById('dateTo').addEventListener('change',()=>{
+  if(curPeriod==='custom'&&document.getElementById('dateFrom').value)reloadMeta();
+});
+
+loadAll();
+</script>
+</body>
+</html>
